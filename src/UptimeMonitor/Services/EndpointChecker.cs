@@ -12,6 +12,9 @@ public sealed class EndpointChecker(HttpClient http, TimeProvider time)
 {
     public async Task<CheckResult> CheckAsync(MonitoredEndpoint endpoint, CancellationToken cancellationToken)
     {
+        // A shutting-down host is not an outage: stop before recording anything.
+        cancellationToken.ThrowIfCancellationRequested();
+
         var checkedAt = time.GetUtcNow();
         var started = time.GetTimestamp();
         long Elapsed() => (long)time.GetElapsedTime(started).TotalMilliseconds;
