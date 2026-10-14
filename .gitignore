@@ -1,0 +1,8 @@
+bin/
+obj/
+publish/
+.idea/
+.vs/
+*.user
+local.settings.json
+TestResults/

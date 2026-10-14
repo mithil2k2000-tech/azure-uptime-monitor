@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Build and test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+      # A real Table storage API for the store's tests. The API-version
+      # check is off so a newer SDK isn't refused by an older emulator.
+      - name: Start Azurite
+        run: |
+          docker run -d --name azurite -p 10002:10002 mcr.microsoft.com/azure-storage/azurite \
+            azurite-table --tableHost 0.0.0.0 --skipApiVersionCheck
+      - run: dotnet build UptimeMonitor.sln -c Release
+      - name: Test
+        env:
+          AZURITE_CONNECTION_STRING: UseDevelopmentStorage=true
+        run: dotnet test UptimeMonitor.sln -c Release --no-build --logger "console;verbosity=normal"
+      - name: The function app publishes
+        run: dotnet publish src/UptimeMonitor -c Release -o publish
+
+  infrastructure:
+    name: Validate Bicep
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: az bicep install
+      - run: az bicep build --file infra/main.bicep --stdout > /dev/null

@@ -1,0 +1,51 @@
+name: Deploy
+
+# Run by hand once Azure is set up (README, "Deploying"). Signs in with
+# OIDC: no Azure secret is stored in GitHub.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    if: vars.AZURE_CLIENT_ID != ''
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Infrastructure
+        id: infra
+        env:
+          RG: ${{ vars.AZURE_RESOURCE_GROUP }}
+          ALERT_EMAIL: ${{ vars.ALERT_EMAIL }}
+        run: |
+          out=$(az deployment group create -g "$RG" -f infra/main.bicep \
+            -p alertEmail="$ALERT_EMAIL" --query properties.outputs -o json)
+          echo "app=$(echo "$out" | jq -r .functionAppName.value)" >> "$GITHUB_OUTPUT"
+          echo "status=$(echo "$out" | jq -r .statusUrl.value)" >> "$GITHUB_OUTPUT"
+
+      - run: dotnet publish src/UptimeMonitor -c Release -o publish
+
+      - uses: Azure/functions-action@v1
+        with:
+          app-name: ${{ steps.infra.outputs.app }}
+          package: publish
+          sku: flexconsumption
+
+      - name: Smoke test
+        env:
+          STATUS_URL: ${{ steps.infra.outputs.status }}
+        run: curl -fsS --retry 10 --retry-delay 10 --retry-all-errors "$STATUS_URL" | jq .

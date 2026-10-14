@@ -1,0 +1,13 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
+    "Storage__ConnectionString": "UseDevelopmentStorage=true",
+    "MONITOR_SCHEDULE": "0 */1 * * * *",
+    "Monitor__Endpoints__0__Name": "github-status",
+    "Monitor__Endpoints__0__Url": "https://www.githubstatus.com",
+    "Monitor__Endpoints__1__Name": "portfolio",
+    "Monitor__Endpoints__1__Url": "https://mithil2k2000-tech.github.io/portfolio/"
+  }
+}
